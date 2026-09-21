@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { generateOtp, canRequestOtp, saveOtp, verifyOtp } = require('../services/otpService');
 const { sendOtpEmail } = require('../services/mailService');
 
+const JWT_EXPIRES_IN = '7d';
 
 exports.requestOtp = async (req, res) => {
     const { email } = req.body;
@@ -23,15 +24,14 @@ exports.requestOtp = async (req, res) => {
 
         res.json({ msg: 'Verification code sent to your email' });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('OTP request error:', err.message);
+        res.status(500).json({ msg: 'Server error' });
     }
 };
 
 exports.registerUser = async (req, res) => {
     const { username, email, password, otp } = req.body;
     try {
-        // Verify OTP first
         const isValid = await verifyOtp(email, otp);
         if (!isValid) {
             return res.status(400).json({ msg: 'Invalid or expired verification code' });
@@ -51,22 +51,15 @@ exports.registerUser = async (req, res) => {
             password: hashedPassword
         });
 
-        const payload = {
-            user: { id: user.id }
-        };
+        const payload = { user: { id: user.id } };
 
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: 360000 },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
-            }
-        );
+        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN }, (err, token) => {
+            if (err) throw err;
+            res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+        });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('Register error:', err.message);
+        res.status(500).json({ msg: 'Server error' });
     }
 };
 
@@ -83,25 +76,17 @@ exports.loginWithOtp = async (req, res) => {
             return res.status(400).json({ msg: 'No user found with this email. Please register first.' });
         }
 
-        const payload = {
-            user: { id: user.id }
-        };
+        const payload = { user: { id: user.id } };
 
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: 360000 },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
-            }
-        );
+        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN }, (err, token) => {
+            if (err) throw err;
+            res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+        });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('OTP login error:', err.message);
+        res.status(500).json({ msg: 'Server error' });
     }
 };
-
 
 exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
@@ -116,27 +101,15 @@ exports.loginUser = async (req, res) => {
             return res.status(400).json({ msg: 'Invalid Credentials' });
         }
 
-        const payload = {
-            user: { id: user.id }
-        };
+        const payload = { user: { id: user.id } };
 
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: 360000 },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
-            }
-        );
+        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN }, (err, token) => {
+            if (err) throw err;
+            res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+        });
     } catch (err) {
-        console.error('SendGrid Error Status:', err.code || 'No Code');
-        if (err.response) {
-            console.error('SendGrid Response Body:', JSON.stringify(err.response.body, null, 2));
-        } else {
-            console.error('Full Error Object:', err);
-        }
-        res.status(500).send('Server error');
+        console.error('Login error:', err.message);
+        res.status(500).json({ msg: 'Server error' });
     }
 };
 
@@ -148,7 +121,7 @@ exports.getUser = async (req, res) => {
         }
         res.json(user);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('Get user error:', err.message);
+        res.status(500).json({ msg: 'Server error' });
     }
 };
