@@ -1,41 +1,27 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Editor } from '@monaco-editor/react';
 import api from '../services/api';
-import { AuthContext } from '../context/AuthContext';
-import { useTranslation } from 'react-i18next';
-import { FiPlay, FiGithub, FiSave, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiPlay, FiGithub, FiTerminal, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
 const Compiler = () => {
-  const { t } = useTranslation();
-  const { token } = useContext(AuthContext);
   const [repos, setRepos] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [fileName, setFileName] = useState('main.js');
   const [code, setCode] = useState('// Write your code here\nconsole.log("Hello, World!");');
-  const [commitMessage, setCommitMessage] = useState('Add new code via Online Compiler');
+  const [commitMessage, setCommitMessage] = useState('Add new code via OSTracker');
   const [output, setOutput] = useState('');
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isPushing, setIsPushing] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-
-  // Supported languages for the runner mapped to Monaco editor languages
-  const languageMap = {
-    'javascript': { piston: 'javascript', version: '18.15.0' },
-    'python': { piston: 'python', version: '3.10.0' },
-    'java': { piston: 'java', version: '15.0.2' },
-    'cpp': { piston: 'c++', version: '10.2.0' }
-  };
   const [selectedLang, setSelectedLang] = useState('javascript');
 
   useEffect(() => {
     fetchRepos();
-  }, [token]);
+  }, []);
 
   const fetchRepos = async () => {
     try {
-      const res = await api.get('/repos', {
-        headers: { 'x-auth-token': token }
-      });
+      const res = await api.get('/repos');
       setRepos(res.data);
       if (res.data.length > 0) {
         setSelectedRepo(res.data[0].repoName);
@@ -50,12 +36,10 @@ const Compiler = () => {
     setIsRunning(true);
     setStatus({ type: '', message: '' });
     setOutput('Running...');
-    
+
     try {
-      const langConfig = languageMap[selectedLang];
       const res = await api.post('/compiler/run', {
-        language: langConfig.piston,
-        version: langConfig.version,
+        language: selectedLang,
         files: [{ name: fileName, content: code }]
       });
 
@@ -86,45 +70,36 @@ const Compiler = () => {
         filePath: fileName,
         content: code,
         commitMessage
-      }, {
-        headers: { 'x-auth-token': token }
       });
 
       setStatus({ type: 'success', message: `Successfully pushed ${fileName} to ${selectedRepo}!` });
     } catch (err) {
-      setStatus({ type: 'error', message: err.response?.data?.error || 'Failed to push to GitHub. (Ensure the app has GitHub permissions)' });
+      setStatus({ type: 'error', message: err.response?.data?.error || 'Failed to push to GitHub.' });
     } finally {
       setIsPushing(false);
     }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Online Compiler</h1>
-          <p className="mt-2 text-sm text-gray-400">Write code, test it, and push directly to your tracked GitHub repositories.</p>
-        </div>
-      </div>
-
+    <div className="space-y-5 animate-fadeInUp">
       {status.message && (
         <div className={`p-4 rounded-lg flex items-center gap-3 ${status.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-          {status.type === 'error' ? <FiAlertCircle size={20} /> : <FiCheckCircle size={20} />}
-          {status.message}
+          {status.type === 'error' ? <FiAlertCircle size={18} /> : <FiCheckCircle size={18} />}
+          <span className="text-sm">{status.message}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Settings Panel */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-medium text-white mb-4">Configuration</h3>
-            
-            <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        {/* Config Panel */}
+        <div className="lg:col-span-1">
+          <div className="dashboard-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-white">Configuration</h3>
+
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Target Repository</label>
-                <select 
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Target Repository</label>
+                <select
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
                   value={selectedRepo}
                   onChange={(e) => setSelectedRepo(e.target.value)}
                 >
@@ -136,24 +111,22 @@ const Compiler = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Language</label>
-                <select 
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Language</label>
+                <select
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
                   value={selectedLang}
                   onChange={(e) => setSelectedLang(e.target.value)}
                 >
                   <option value="javascript">JavaScript</option>
                   <option value="python">Python</option>
-                  <option value="java">Java</option>
-                  <option value="cpp">C++</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">File Name</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder-gray-500"
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">File Name</label>
+                <input
+                  type="text"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all placeholder-slate-600"
                   value={fileName}
                   onChange={(e) => setFileName(e.target.value)}
                   placeholder="e.g., solution.js"
@@ -161,10 +134,10 @@ const Compiler = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Commit Message</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder-gray-500"
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Commit Message</label>
+                <input
+                  type="text"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all placeholder-slate-600"
                   value={commitMessage}
                   onChange={(e) => setCommitMessage(e.target.value)}
                   placeholder="Initial commit"
@@ -172,29 +145,28 @@ const Compiler = () => {
               </div>
             </div>
 
-            <div className="mt-8 space-y-3">
-              <button 
+            <div className="space-y-2 pt-2">
+              <button
                 onClick={handleRun}
                 disabled={isRunning}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 hover:text-indigo-300 rounded-xl font-medium transition-all disabled:opacity-50 border border-indigo-500/20"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/15 rounded-lg text-sm font-medium transition-all disabled:opacity-50 border border-indigo-500/15"
               >
-                <FiPlay /> {isRunning ? 'Running...' : 'Run Code'}
+                <FiPlay size={14} /> {isRunning ? 'Running...' : 'Run Code'}
               </button>
-
-              <button 
+              <button
                 onClick={handlePush}
                 disabled={isPushing}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50"
               >
-                <FiGithub /> {isPushing ? 'Pushing...' : 'Push to GitHub'}
+                <FiGithub size={14} /> {isPushing ? 'Pushing...' : 'Push to GitHub'}
               </button>
             </div>
           </div>
         </div>
 
         {/* Editor Panel */}
-        <div className="lg:col-span-3 flex flex-col gap-6">
-          <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl overflow-hidden shadow-2xl h-[500px]">
+        <div className="lg:col-span-3 flex flex-col gap-5">
+          <div className="dashboard-card overflow-hidden h-[480px]">
             <Editor
               height="100%"
               language={selectedLang}
@@ -206,20 +178,18 @@ const Compiler = () => {
                 fontSize: 14,
                 padding: { top: 16, bottom: 16 },
                 smoothScrolling: true,
-                cursorBlinking: "smooth",
-                cursorSmoothCaretAnimation: true,
+                cursorBlinking: 'smooth',
                 formatOnPaste: true,
               }}
-              className="mt-2"
             />
           </div>
 
-          {/* Console Output */}
-          <div className="bg-black/80 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-4 shadow-2xl min-h-[150px] font-mono text-sm">
-            <div className="text-gray-500 mb-2 border-b border-gray-800 pb-2 flex items-center gap-2">
-              <FiSave /> Terminal Output
+          {/* Console */}
+          <div className="dashboard-card p-4 min-h-[140px] font-mono text-sm">
+            <div className="text-slate-600 mb-2 border-b border-white/[0.04] pb-2 flex items-center gap-2 text-xs">
+              <FiTerminal size={12} /> Output
             </div>
-            <pre className="text-gray-300 whitespace-pre-wrap">{output || 'Ready.'}</pre>
+            <pre className="text-slate-300 whitespace-pre-wrap text-xs">{output || 'Ready.'}</pre>
           </div>
         </div>
       </div>
